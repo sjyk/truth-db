@@ -11,13 +11,18 @@ Statement and Mention.
 class Statement():
     '''A statement is the basic abstract data type in Truth DB. It can be
     a sentence or it can be a database tuple, or any other object. Inheritting
-    classes have to impelement getData and getAllValidMentions.
+    classes have to impelement getData, getRawData, and getAllValidMentions.
     '''
 
     def getData(self):
-        '''getData() return the raw data contained in this statement.
+        '''getData() return the processed data contained in this statement.
         '''
         raise NotImplemented("This statement has not been defined with data")
+
+    def getRawData(self):
+        '''getRawData() return the raw data contained in this statement.
+        '''
+        raise NotImplemented("This statement has not been defined with raw data")
 
     def getAllValidMentions(self):
         '''Returns all the valid mentions relevant to this statement.
@@ -30,6 +35,12 @@ class Statement():
         return mention.test(self.getData())
 
 
+    def __str__(self):
+        return str({'Statement': self.getRawData()})
+
+    __repr__ = __str__
+
+
 
 class Mention():
     '''A mention is a boolean condition that tests the existence
@@ -38,6 +49,7 @@ class Mention():
 
     def test(self):
         return False
+
 
 
 class Generator():
@@ -67,9 +79,22 @@ class Generator():
         import datetime
         now = datetime.datetime.now()
         self.data = self.prot_load()
-        elapsed = (now - datetime.datetime.now()).total_seconds()
+        elapsed = (datetime.datetime.now()-now).total_seconds()
         size = len(self.data)
         return {'time': elapsed, 'extracted': size}
+
+
+
+
+class SentimentAnalyzer():
+
+    def __init__(self, data, args={}):
+        self.data = data
+        self.args = args
+
+    def batchAnalyze(self):
+        return [(d,0) for d in data]
+
 
 
 

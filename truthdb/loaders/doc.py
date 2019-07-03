@@ -4,12 +4,15 @@ is copyrighted by the University of Chicago Database Group.
 This module defines the primitives for manipulating textual documents. 
 '''
 
-from core import Statement, Mention, Generator
+from core import Statement, Mention, Generator,SentimentAnalyzer
 
 import nltk
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.tag import pos_tag
+
 import re
+import os
+import subprocess
 
 class TextualStatement(Statement):
 
@@ -19,6 +22,9 @@ class TextualStatement(Statement):
 
     def getData(self):
         return self.parsed
+
+    def getRawData(self):
+        return self.text
 
     def getAllValidMentions(self):
         return set([ContainsMention(p) for p in self.parsed])
@@ -63,6 +69,50 @@ class ContainsMention(Mention):
     __repr__ = __str__
 
 
-t = TextualStatement('Attorney General Loretta Lynch is declining to comply with an investigation by leading members of Congress about the Obama administration’s secret efforts to send Iran $1.7 billion')
-print(t.getAllValidMentions())
+class StanfordNLPModel(SentimentAnalyzer):
 
+    def __init__(self, data, args):
+        super(StanfordNLPModel, self).__init__(data,args)
+
+    def batchAnalyze(self):
+        my_env = os.environ.copy()
+        my_env["CLASSPATH"] = self.args['install_path'] + "/*"
+        process=subprocess.Popen(['java','-mx5g', 'edu.stanford.nlp.sentiment.SentimentPipeline', '-stdin'],
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     env=my_env)
+        datalst = list([t.getRawData() for t in self.data])
+        data = bytes('\n'.join(datalst),'utf-8')
+        stdoutdata,stderrdata=process.communicate(input=data)
+        predictionlst = str(stdoutdata).split('\\n')
+        numerical_predictions = []
+        for p in predictionlst:
+            if 'Pos' in p:
+                numerical_predictions.append(1)
+            elif 'Neg' in p:
+                numerical_predictions.append(-1)
+            else:
+                numerical_predictions.append(0)
+
+        return list(zip(list(self.data), numerical_predictions))
+
+
+class DocumentSentenceGenerator(Generator):
+
+    def __init__(self, filename):
+        f = open(filename, 'r')
+        text = ' '.join(f.readlines())
+        super(DocumentSentenceGenerator, self).__init__(sent_tokenize(text))
+
+    def prot_load(self):
+        rtn = set()
+        for d in self.iterator:
+            rtn.add(TextualStatement(d))
+        return rtn
+
+
+d = DocumentSentenceGenerator('demo.txt')
+print(d.load())
+s = StanfordNLPModel(d.data, {'install_path': '/Users/sanjayk/Dropbox/fact-checking/contradiction-dep/utils/stanford-corenlp-full-2018-10-05'})
+print(s.batchAnalyze())
