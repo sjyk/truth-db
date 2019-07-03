@@ -4,7 +4,7 @@ is copyrighted by the University of Chicago Database Group.
 This module defines the primitives for manipulating textual documents. 
 '''
 
-from core import Statement, Mention, Generator,SentimentAnalyzer
+from .core import Statement, Mention, Generator,SentimentAnalyzer
 
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -100,8 +100,8 @@ class StanfordNLPModel(SentimentAnalyzer):
 
 class DocumentSentenceGenerator(Generator):
 
-    def __init__(self, filename):
-        f = open(filename, 'r')
+    def __init__(self, args):
+        f = open(args['filename'], 'r')
         text = ' '.join(f.readlines())
         super(DocumentSentenceGenerator, self).__init__(sent_tokenize(text))
 
@@ -110,9 +110,3 @@ class DocumentSentenceGenerator(Generator):
         for d in self.iterator:
             rtn.add(TextualStatement(d))
         return rtn
-
-
-d = DocumentSentenceGenerator('demo.txt')
-print(d.load())
-s = StanfordNLPModel(d.data, {'install_path': '/Users/sanjayk/Dropbox/fact-checking/contradiction-dep/utils/stanford-corenlp-full-2018-10-05'})
-print(s.batchAnalyze())

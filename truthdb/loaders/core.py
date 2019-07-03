@@ -35,6 +35,12 @@ class Statement():
         return mention.test(self.getData())
 
 
+    def __eq__(self, other):
+        return (other.getRawData() == self.getRawData())
+
+    def __hash__(self):
+        return hash(self.getRawData())
+
     def __str__(self):
         return str({'Statement': self.getRawData()})
 
@@ -81,7 +87,7 @@ class Generator():
         self.data = self.prot_load()
         elapsed = (datetime.datetime.now()-now).total_seconds()
         size = len(self.data)
-        return {'time': elapsed, 'extracted': size}
+        return {'time': elapsed, 'extracted': size, 'label': 'loading'}
 
 
 
@@ -91,9 +97,19 @@ class SentimentAnalyzer():
     def __init__(self, data, args={}):
         self.data = data
         self.args = args
+        self.result = None
 
     def batchAnalyze(self):
-        return [(d,0) for d in data]
+        raise NotImplemented("batchAnalyze() not impelemented")
+
+
+    def run(self):
+        import datetime
+        now = datetime.datetime.now()
+        self.result = self.batchAnalyze()
+        elapsed = (datetime.datetime.now()-now).total_seconds()
+        size = len(self.result)
+        return {'time': elapsed, 'extracted': size, 'label': 'sentiment'}
 
 
 
