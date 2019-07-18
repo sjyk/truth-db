@@ -14,6 +14,9 @@ class Statement():
     classes have to impelement getData, getRawData, and getAllValidMentions.
     '''
 
+    def __init__(self, src):
+        self.src = src
+
     def getData(self):
         '''getData() return the processed data contained in this statement.
         '''
@@ -55,6 +58,12 @@ class Mention():
 
     def test(self):
         return False
+
+    def __eq__(self, other):
+        raise NotImplemented("All mentions should be hashable")
+
+    def __hash__(self):
+        raise NotImplemented("All mentions should be hashable")
 
 
 
