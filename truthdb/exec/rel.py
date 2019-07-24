@@ -91,7 +91,7 @@ class DARelation(object):
 	    	#projects all tuples onto those attributes that are numerical
 	    """
 
-		if is_iterable(aex)
+		if is_iterable(aex):
 		    helper = lambda a: any([k(a) for k in aex])
 		else:
 		    helper = lambda a: aex(a)
