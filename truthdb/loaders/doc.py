@@ -2,9 +2,11 @@
 is copyrighted by the University of Chicago Database Group.
 
 This module defines the primitives for manipulating textual documents. 
+
+CORE_NLP_PATH = '/Users/sanjaykrishnan/Documents/fact-checking/stanford-corenlp-full-2018-10-05'
 '''
 
-from .core import Statement, Mention, Generator,SentimentAnalyzer
+from .core import Statement, Generator
 
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -14,20 +16,13 @@ import re
 import os
 import subprocess
 
-from nltk.corpus import reuters
-
-WORD_SCORES = nltk.FreqDist(w.lower() for w in reuters.words())
-
-
 class TextualStatement(Statement):
 
-    def __init__(self, text, src, rarity=400):
+    def __init__(self, text, src):
         self.text = text
         self.parsed = self.parse(text)
-        self.rarity = rarity
 
         super(TextualStatement, self).__init__(src)
-
 
     def getData(self):
         return self.parsed
@@ -36,8 +31,7 @@ class TextualStatement(Statement):
         return self.text
 
     def getAllValidMentions(self):
-        raw_mentions = [ContainsMention(p) for p in self.parsed if len(p.strip()) > 0]
-        return set([r for r in raw_mentions if r.rarity < self.rarity])
+        return [p for p in self.parsed if len(p.strip()) > 0]
 
     def parse(self, text):
         sent = [word for word in nltk.word_tokenize(text)]
@@ -58,61 +52,9 @@ class TextualStatement(Statement):
         cs = cp.parse(pos)
         return cs
 
-    def parseQuantity(self, pos):
-        pattern = 'CDG: {<CD>*}'
-        cp = nltk.RegexpParser(pattern)
-        cs = cp.parse(pos)
-        return cs
+    def __iter__(self):
+        return iter(self.getAllValidMentions())
 
-
-class ContainsMention(Mention):
-
-    def __init__(self, obj):
-        self.data = obj
-        self.rarity = min([WORD_SCORES[word.lower()] for word in self.data.split()])
-
-    def test(self, data):
-        return (obj in data)
-
-    def __eq__(self, other):
-        return self.data == other.data
-
-    def __hash__(self):
-        return hash(self.data)
-
-    def __str__(self):
-        return str({'Mentions': self.data})
-
-    __repr__ = __str__
-
-
-class StanfordNLPModel(SentimentAnalyzer):
-
-    def __init__(self, data, args):
-        super(StanfordNLPModel, self).__init__(data,args)
-
-    def batchAnalyze(self):
-        my_env = os.environ.copy()
-        my_env["CLASSPATH"] = self.args['install_path'] + "/*"
-        process=subprocess.Popen(['java','-mx5g', 'edu.stanford.nlp.sentiment.SentimentPipeline', '-stdin'],
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     env=my_env)
-        datalst = list([t.getRawData() for t in self.data])
-        data = bytes('\n'.join(datalst),'utf-8')
-        stdoutdata,stderrdata=process.communicate(input=data)
-        predictionlst = str(stdoutdata).split('\\n')
-        numerical_predictions = []
-        for p in predictionlst:
-            if 'Pos' in p:
-                numerical_predictions.append(1)
-            elif 'Neg' in p:
-                numerical_predictions.append(-1)
-            else:
-                numerical_predictions.append(0)
-
-        return list(zip(list(self.data), numerical_predictions))
 
 
 class DocumentSentenceGenerator(Generator):

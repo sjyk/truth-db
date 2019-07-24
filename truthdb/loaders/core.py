@@ -50,23 +50,6 @@ class Statement():
     __repr__ = __str__
 
 
-
-class Mention():
-    '''A mention is a boolean condition that tests the existence
-    of an entity in a statement.
-    '''
-
-    def test(self):
-        return False
-
-    def __eq__(self, other):
-        raise NotImplemented("All mentions should be hashable")
-
-    def __hash__(self):
-        raise NotImplemented("All mentions should be hashable")
-
-
-
 class Generator():
     '''Generator is the basic data loading class in TruthDB.
     '''
@@ -97,30 +80,5 @@ class Generator():
         elapsed = (datetime.datetime.now()-now).total_seconds()
         size = len(self.data)
         return {'time': elapsed, 'extracted': size, 'label': 'loading'}
-
-
-
-
-class SentimentAnalyzer():
-
-    def __init__(self, data, args={}):
-        self.data = data
-        self.args = args
-        self.result = None
-
-    def batchAnalyze(self):
-        raise NotImplemented("batchAnalyze() not impelemented")
-
-
-    def run(self):
-        import datetime
-        now = datetime.datetime.now()
-        self.result = self.batchAnalyze()
-        elapsed = (datetime.datetime.now()-now).total_seconds()
-        size = len(self.result)
-        return {'time': elapsed, 'extracted': size, 'label': 'sentiment'}
-
-
-
 
 
