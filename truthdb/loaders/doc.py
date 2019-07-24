@@ -6,45 +6,54 @@ This module defines the primitives for manipulating textual documents.
 CORE_NLP_PATH = '/Users/sanjaykrishnan/Documents/fact-checking/stanford-corenlp-full-2018-10-05'
 '''
 
-from .core import Statement, Generator
+from .core import Loader
+from truthdb.exec.rel import DARelation
 
 import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.tag import pos_tag
-
+from nltk.tokenize import sent_tokenize, TweetTokenizer
 import re
-import os
-import subprocess
 
-class TextualStatement(Statement):
 
-    def __init__(self, text, src):
-        self.text = text
-        self.parsed = self.parse(text)
 
-        super(TextualStatement, self).__init__(src)
+class SentenceLoader(Loader):
 
-    def getData(self):
-        return self.parsed
+    def __init__(self, args):
+        super(SentenceLoader, self).__init__(args)
 
-    def getRawData(self):
-        return self.text
+        f = open(self.params['filename'], 'r')
+        self.text = ' '.join(f.readlines())
+        self.text = self.text.replace(u'\u2019', "'").replace(u'\u201d', '"')
 
-    def getAllValidMentions(self):
-        return [p for p in self.parsed if len(p.strip()) > 0]
+    def _check_params(self):
+        return ('filename' in self.params)
+
+    def _load(self):
+        rtn = []
+        for d in sent_tokenize(self.text):
+            rtn.append(d.split())
+        return DARelation(rtn)
+
+
+
+class ProperNounPhraseLoader(SentenceLoader):
+
+    def __init__(self, args):
+        super(ProperNounPhraseLoader, self).__init__(args)
 
     def parse(self, text):
-        sent = [word for word in nltk.word_tokenize(text)]
+        tknzr = TweetTokenizer()
+        sent = [word for word in tknzr.tokenize(text)]
         sent = nltk.pos_tag(sent)
         parsed_tokens = self.parseNoun(sent)
         noun_phrases = [ ' '.join([word[0] for word in p.leaves()])\
                          for p in parsed_tokens \
                          if isinstance(p, nltk.tree.Tree) and p.label() == 'NNG']
 
-        noun_phrases = [re.sub(r'[^\w\s]','',n).strip().lower()\
-                         for n in noun_phrases]
+        noun_phrases = [re.sub(r'[^\w\s]','',n).strip()\
+                         for n in noun_phrases \
+                         if "'" not in n]
 
-        return noun_phrases
+        return [n for n in noun_phrases if len(n) > 0 and self._is_capitalized(n)]
 
     def parseNoun(self, pos):
         pattern = 'NNG: {<NN|NNS|NNP>*}'
@@ -52,21 +61,14 @@ class TextualStatement(Statement):
         cs = cp.parse(pos)
         return cs
 
-    def __iter__(self):
-        return iter(self.getAllValidMentions())
+    def _is_capitalized(self, word):
+        return any([w[0].isupper() for w in word.split()])
 
-
-
-class DocumentSentenceGenerator(Generator):
-
-    def __init__(self, args):
-        f = open(args['filename'], 'r')
-        text = ' '.join(f.readlines())
-        self.filename = args['filename']
-        super(DocumentSentenceGenerator, self).__init__(sent_tokenize(text))
-
-    def prot_load(self):
-        rtn = set()
-        for d in self.iterator:
-            rtn.add(TextualStatement(d, self.filename))
-        return rtn
+    def _load(self):
+        rtn = []
+        for d in sent_tokenize(self.text):
+            row = self.parse(d)
+            if len(row) > 0:
+                rtn.append(row)
+        return DARelation(rtn)
+        
