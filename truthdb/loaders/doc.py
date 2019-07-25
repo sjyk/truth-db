@@ -68,6 +68,7 @@ class ProperNounPhraseLoader(SentenceLoader):
         rtn = []
         for d in sent_tokenize(self.text):
             row = self.parse(d)
+            row.append(('Sentence', d))
             if len(row) > 0:
                 rtn.append(row)
         return DARelation(rtn)
